@@ -6,6 +6,8 @@
 
 my-spot 是一个可运行的“现货交易”示例项目（Spot Exchange Demo），目标是把**账户体系 + 资产流水 + 充值/提现模拟 + 交易撮合 + 行情推送 + 前端页面**打通成一个完整闭环，便于学习与二次开发。
 
+![img.png](img.png)
+
 ### 特性
 
 - 账户与安全
@@ -156,6 +158,8 @@ Linux：
 ## English
 
 my-spot is a runnable Spot Exchange demo that aims to provide an end-to-end learning playground: **accounts + wallets/ledger + deposit/withdraw simulation + order matching + market data + WebSocket + a simple web UI**.
+
+![img.png](img.png)
 
 ### Features
 

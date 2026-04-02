@@ -1,16 +1,30 @@
 <template>
-  <div style="display: grid; gap: 12px; max-width: 520px">
-    <h3>基础KYC</h3>
-    <div v-if="!auth.token" style="color: #c00">请先登录</div>
-    <div v-else style="display: grid; gap: 10px">
-      <div>当前状态：{{ auth.me?.kycStatus ?? "-" }}</div>
-      <label>
-        姓名
-        <input v-model="name" style="width: 100%" />
-      </label>
-      <button @click="submit" :disabled="loading">提交认证</button>
-      <div v-if="msg" style="color: #060">{{ msg }}</div>
-      <div v-if="err" style="color: #c00">{{ err }}</div>
+  <div class="panel" style="max-width: 560px">
+    <div class="panel-header">
+      <div class="panel-title">基础 KYC</div>
+      <span class="badge">
+        <span :class="['dot', auth.me?.kycStatus === 'VERIFIED' ? 'ok' : 'warn']" />
+        <span class="mono">{{ auth.me?.kycStatus ?? "-" }}</span>
+      </span>
+    </div>
+    <div class="panel-body">
+      <div v-if="!auth.token" class="badge" style="border-color: rgba(239, 68, 68, 0.25)">
+        <span class="dot bad" />
+        <span>请先登录</span>
+      </div>
+      <div v-else style="display: grid; gap: 10px">
+        <label style="display: grid; gap: 6px">
+          <div class="muted">姓名</div>
+          <input v-model="name" class="input" />
+        </label>
+        <button class="btn btn-primary" @click="submit" :disabled="loading" style="padding: 12px 12px; font-weight: 800">
+          {{ loading ? "提交中…" : "提交认证" }}
+        </button>
+        <div v-if="msg" class="badge" style="border-color: rgba(22, 163, 74, 0.28)">
+          <span class="dot ok" />
+          <span class="mono">{{ msg }}</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -19,8 +33,10 @@
 import { ref } from "vue";
 import { http } from "../api/http";
 import { useAuthStore } from "../stores/auth";
+import { useToastStore } from "../stores/toast";
 
 const auth = useAuthStore();
+const toast = useToastStore();
 const name = ref(auth.me?.name ?? "");
 const loading = ref(false);
 const err = ref("");
@@ -35,15 +51,16 @@ async function submit() {
   msg.value = "";
   loading.value = true;
   try {
-    const res = await http.post("/api/account/kyc", { name: name.value });
+    await http.post("/api/account/kyc", { name: name.value });
     msg.value = "认证成功";
     const meRes = await http.get("/api/account/me");
     auth.me = meRes.data;
+    toast.push("KYC", "认证成功");
   } catch (e: any) {
     err.value = apiErr(e);
+    toast.push("KYC", err.value);
   } finally {
     loading.value = false;
   }
 }
 </script>
-

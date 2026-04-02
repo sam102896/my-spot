@@ -27,3 +27,13 @@
 
 说明
 - 后端使用 H2 文件库，默认位于 `backend\data\`。重置会删除该目录。
+
+## 性能压测（JMH）
+- Windows：`.\scripts\windows\run-perf-jmh.ps1`
+- Linux：`./scripts/linux/run-perf-jmh.sh`
+
+示例（4 线程，输出 JSON）
+- Windows：
+  - `.\scripts\windows\run-perf-jmh.ps1 ".*SpringTradingBenchmark.*" -t 4 -wi 2 -i 3 -f 1 -rf json -rff perf-result.json`
+- Linux：
+  - `./scripts/linux/run-perf-jmh.sh ".*SpringTradingBenchmark.*" -t 4 -wi 2 -i 3 -f 1 -rf json -rff perf-result.json`

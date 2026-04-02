@@ -1,14 +1,26 @@
 <template>
-  <div style="display: grid; gap: 16px">
-    <h3>资产</h3>
-    <div v-if="!auth.token" style="color: #c00">请先登录</div>
-    <div v-else style="display: grid; gap: 16px">
-      <section style="border: 1px solid #ddd; padding: 12px">
-        <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center">
-          <strong>余额</strong>
-          <button @click="refresh" :disabled="loading">刷新</button>
+  <div style="display: grid; gap: 14px">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">资产</div>
+        <button class="btn btn-primary" @click="refresh" :disabled="loading">{{ loading ? "刷新中…" : "刷新" }}</button>
+      </div>
+      <div class="panel-body">
+        <div v-if="!auth.token" class="badge" style="border-color: rgba(239, 68, 68, 0.25)">
+          <span class="dot bad" />
+          <span>请先登录</span>
         </div>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 8px">
+        <div v-else class="muted" style="font-size: 12px">余额 / 充值 / 提现 / 记录</div>
+      </div>
+    </div>
+
+    <div v-if="auth.token" style="display: grid; gap: 14px">
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">余额</div>
+        </div>
+        <div class="panel-body" style="padding: 0">
+          <table class="table">
           <thead>
             <tr>
               <th align="left">币种</th>
@@ -24,67 +36,88 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </section>
 
-      <section style="border: 1px solid #ddd; padding: 12px; display: grid; gap: 10px">
-        <strong>充值（开发环境模拟）</strong>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap">
-          <label>
-            资产
-            <select v-model="dep.asset">
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">充值（开发环境模拟）</div>
+        </div>
+        <div class="panel-body" style="display: grid; gap: 10px">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <label style="display: grid; gap: 6px; min-width: 120px">
+              <div class="muted">资产</div>
+              <select v-model="dep.asset" class="select">
               <option value="USDT">USDT</option>
               <option value="BTC">BTC</option>
               <option value="ETH">ETH</option>
             </select>
-          </label>
-          <label>
-            金额
-            <input v-model="dep.amount" />
-          </label>
-          <button @click="getAddress" :disabled="loading">获取充值地址</button>
-        </div>
-        <div v-if="dep.address">地址：{{ dep.address }}</div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
-          <label>
-            AdminKey
-            <input v-model="dep.adminKey" style="width: 180px" />
-          </label>
-          <button @click="simulateDeposit" :disabled="loading">模拟到账</button>
-          <span v-if="dep.msg" style="color: #060">{{ dep.msg }}</span>
+            </label>
+            <label style="display: grid; gap: 6px; min-width: 140px">
+              <div class="muted">金额</div>
+              <input v-model="dep.amount" class="input mono" />
+            </label>
+            <button class="btn btn-primary btn-sm" @click="getAddress" :disabled="loading">获取充值地址</button>
+          </div>
+          <div v-if="dep.address" class="badge" style="width: fit-content">
+            <span class="muted">地址</span>
+            <span class="mono">{{ dep.address }}</span>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: end">
+            <label style="display: grid; gap: 6px; min-width: 240px">
+              <div class="muted">AdminKey</div>
+              <input v-model="dep.adminKey" class="input mono" />
+            </label>
+            <button class="btn btn-buy btn-sm" @click="simulateDeposit" :disabled="loading">模拟到账</button>
+            <span v-if="dep.msg" class="badge" style="border-color: rgba(22, 163, 74, 0.28)">
+              <span class="dot ok" />
+              <span class="mono">{{ dep.msg }}</span>
+            </span>
+          </div>
         </div>
       </section>
 
-      <section style="border: 1px solid #ddd; padding: 12px; display: grid; gap: 10px">
-        <strong>提现</strong>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap">
-          <label>
-            资产
-            <select v-model="wd.asset">
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">提现</div>
+        </div>
+        <div class="panel-body" style="display: grid; gap: 10px">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <label style="display: grid; gap: 6px; min-width: 120px">
+              <div class="muted">资产</div>
+              <select v-model="wd.asset" class="select">
               <option value="USDT">USDT</option>
               <option value="BTC">BTC</option>
               <option value="ETH">ETH</option>
             </select>
-          </label>
-          <label>
-            地址
-            <input v-model="wd.address" style="width: 260px" />
-          </label>
-          <label>
-            金额
-            <input v-model="wd.amount" />
-          </label>
-          <label>
-            资金密码
-            <input v-model="wd.fundPassword" type="password" style="width: 120px" />
-          </label>
-          <button @click="withdraw" :disabled="loading">发起提现</button>
+            </label>
+            <label style="display: grid; gap: 6px; min-width: 320px; flex: 1">
+              <div class="muted">地址</div>
+              <input v-model="wd.address" class="input mono" />
+            </label>
+            <label style="display: grid; gap: 6px; min-width: 140px">
+              <div class="muted">金额</div>
+              <input v-model="wd.amount" class="input mono" />
+            </label>
+            <label style="display: grid; gap: 6px; min-width: 140px">
+              <div class="muted">资金密码</div>
+              <input v-model="wd.fundPassword" class="input mono" type="password" />
+            </label>
+            <button class="btn btn-sell btn-sm" @click="withdraw" :disabled="loading" style="font-weight: 800">发起提现</button>
+          </div>
+          <div v-if="wd.msg" class="badge" style="border-color: rgba(22, 163, 74, 0.28)">
+            <span class="dot ok" />
+            <span class="mono">{{ wd.msg }}</span>
+          </div>
         </div>
-        <div v-if="wd.msg" style="color: #060">{{ wd.msg }}</div>
       </section>
 
-      <section style="border: 1px solid #ddd; padding: 12px">
-        <strong>充值记录</strong>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 8px">
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">充值记录</div>
+        </div>
+        <div class="panel-body" style="padding: 0">
+          <table class="table">
           <thead>
             <tr>
               <th align="left">ID</th>
@@ -104,11 +137,15 @@
             </tr>
           </tbody>
         </table>
+        </div>
       </section>
 
-      <section style="border: 1px solid #ddd; padding: 12px">
-        <strong>提现记录</strong>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 8px">
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">提现记录</div>
+        </div>
+        <div class="panel-body" style="padding: 0">
+          <table class="table">
           <thead>
             <tr>
               <th align="left">ID</th>
@@ -127,24 +164,44 @@
               <td align="right">{{ fmtAmount(w.fee) }}</td>
               <td>{{ w.status }}</td>
               <td>
-                <button v-if="w.status === 'PENDING'" @click="cancelWithdraw(w.id)" :disabled="loading">撤销</button>
+                <button v-if="w.status === 'PENDING'" class="btn btn-sell" @click="askCancel(w.id)" :disabled="loading">
+                  撤销
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
+        </div>
       </section>
 
-      <div v-if="err" style="color: #c00">{{ err }}</div>
+      <div v-if="err" class="badge" style="border-color: rgba(239, 68, 68, 0.25)">
+        <span class="dot bad" />
+        <span>{{ err }}</span>
+      </div>
+
+      <ConfirmDialog
+        :open="confirmOpen"
+        title="确认撤销提现吗？"
+        :message="`确认撤销提现 ${confirmId ? confirmId.slice(0, 6) + '…' + confirmId.slice(-4) : ''} ?`"
+        confirmText="确认撤销"
+        cancelText="取消"
+        @cancel="confirmOpen = false"
+        @confirm="confirmCancel"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
+import ConfirmDialog from "../components/ConfirmDialog.vue";
 import { http } from "../api/http";
 import { useAuthStore } from "../stores/auth";
+import { useToastStore } from "../stores/toast";
+import { formatAtomic } from "../utils/format";
 
 const auth = useAuthStore();
+const toast = useToastStore();
 const loading = ref(false);
 const err = ref("");
 
@@ -167,25 +224,6 @@ const wd = reactive({
   fundPassword: "123456",
   msg: ""
 });
-
-function formatAtomic(v: unknown, decimals = 8): string {
-  if (v === null || v === undefined) return "-";
-  let bi: bigint;
-  try {
-    if (typeof v === "bigint") bi = v;
-    else bi = BigInt(String(v));
-  } catch {
-    return "-";
-  }
-  const neg = bi < 0n;
-  const abs = neg ? -bi : bi;
-  const base = 10n ** BigInt(decimals);
-  const whole = abs / base;
-  const fracRaw = (abs % base).toString().padStart(decimals, "0");
-  const frac = fracRaw.replace(/0+$/, "");
-  const s = frac.length > 0 ? `${whole.toString()}.${frac}` : whole.toString();
-  return neg ? `-${s}` : s;
-}
 
 function fmtAmount(v: unknown): string {
   return formatAtomic(v, 8);
@@ -210,6 +248,7 @@ async function refresh() {
     withdrawals.value = wdRes.data;
   } catch (e: any) {
     err.value = apiErr(e);
+    toast.push("Wallet", err.value);
   } finally {
     loading.value = false;
   }
@@ -224,6 +263,7 @@ async function getAddress() {
     dep.address = res.data.address;
   } catch (e: any) {
     err.value = apiErr(e);
+    toast.push("Deposit", err.value);
   } finally {
     loading.value = false;
   }
@@ -242,9 +282,11 @@ async function simulateDeposit() {
       { headers: { "X-Admin-Key": dep.adminKey } }
     );
     dep.msg = `已创建充值：${res.data.id}，约5秒后自动确认`;
+    toast.push("Deposit", "充值已创建，等待确认");
     await refresh();
   } catch (e: any) {
     err.value = apiErr(e);
+    toast.push("Deposit", err.value);
   } finally {
     loading.value = false;
   }
@@ -262,9 +304,11 @@ async function withdraw() {
       fundPassword: wd.fundPassword
     });
     wd.msg = `提现已提交：${res.data.id}（状态${res.data.status}）`;
+    toast.push("Withdraw", "提现已提交");
     await refresh();
   } catch (e: any) {
     err.value = apiErr(e);
+    toast.push("Withdraw", err.value);
   } finally {
     loading.value = false;
   }
@@ -275,12 +319,29 @@ async function cancelWithdraw(id: string) {
   loading.value = true;
   try {
     await http.post(`/api/account/withdraw/${id}/cancel`);
+    toast.push("Withdraw", "已撤销");
     await refresh();
   } catch (e: any) {
     err.value = apiErr(e);
+    toast.push("Withdraw", err.value);
   } finally {
     loading.value = false;
   }
+}
+
+const confirmOpen = ref(false);
+const confirmId = ref("");
+
+function askCancel(id: string) {
+  confirmId.value = id;
+  confirmOpen.value = true;
+}
+
+function confirmCancel() {
+  const id = confirmId.value;
+  confirmOpen.value = false;
+  confirmId.value = "";
+  if (id) cancelWithdraw(id);
 }
 
 onMounted(() => {
