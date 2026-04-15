@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -29,12 +30,15 @@ public class MarketService {
     private final AssetRepo assetRepo;
     private final OrderRepo orderRepo;
     private final TradeRepo tradeRepo;
+    private final MarketMakerService marketMakerService;
 
-    public MarketService(TradingPairRepo pairRepo, AssetRepo assetRepo, OrderRepo orderRepo, TradeRepo tradeRepo) {
+    public MarketService(TradingPairRepo pairRepo, AssetRepo assetRepo, OrderRepo orderRepo, TradeRepo tradeRepo,
+            MarketMakerService marketMakerService) {
         this.pairRepo = pairRepo;
         this.assetRepo = assetRepo;
         this.orderRepo = orderRepo;
         this.tradeRepo = tradeRepo;
+        this.marketMakerService = marketMakerService;
     }
 
     public List<Map<String, Object>> listPairs() {
@@ -61,8 +65,13 @@ public class MarketService {
         TradingPairEntity pair = getPairOrThrow(pairSymbol);
         List<OrderEntity> bids = orderRepo.findBidsBook(pair.getId(), PageRequest.of(0, 200));
         List<OrderEntity> asks = orderRepo.findAsksBook(pair.getId(), PageRequest.of(0, 200));
-        return Map.of("pair", pair.getSymbol(), "bids", aggregateTopLevels(bids, OrderSide.BUY, 5), "asks",
-                aggregateTopLevels(asks, OrderSide.SELL, 5));
+        int levels = 10;
+        // 真实委托簿 + 虚拟做市深度合并输出，让前端在冷启动时也有流动性和跳动效果。
+        return Map.of("pair", pair.getSymbol(),
+                "bids", mergeLevels(aggregateTopLevels(bids, OrderSide.BUY, levels), marketMakerService.bids(pair.getSymbol(), levels),
+                        OrderSide.BUY, levels),
+                "asks", mergeLevels(aggregateTopLevels(asks, OrderSide.SELL, levels), marketMakerService.asks(pair.getSymbol(), levels),
+                        OrderSide.SELL, levels));
     }
 
     public List<Map<String, Object>> recentTrades(String pairSymbol, int limit) {
@@ -74,7 +83,12 @@ public class MarketService {
             out.add(Map.of("price", t.getPrice(), "qty", t.getQty(), "quoteQty", t.getQuoteQty(), "createdAt",
                     t.getCreatedAt().toString()));
         }
-        return out;
+        for (MarketMakerService.TradeSnapshot t : marketMakerService.recentTrades(pair.getSymbol(), limit)) {
+            out.add(Map.of("price", t.price(), "qty", t.qty(), "quoteQty", t.quoteQty(), "createdAt",
+                    t.createdAt().toString()));
+        }
+        out.sort(Comparator.comparing((Map<String, Object> m) -> Instant.parse((String) m.get("createdAt"))).reversed());
+        return out.subList(0, Math.min(limit, out.size()));
     }
 
     public List<Map<String, Object>> kline1m(String pairSymbol, int limit) {
@@ -82,12 +96,15 @@ public class MarketService {
         List<TradeEntity> ts = tradeRepo.findByPairIdOrderByCreatedAtDesc(pair.getId(), PageRequest.of(0, 2000));
         long interval = 60L;
         LinkedHashMap<Long, Bar> bars = new LinkedHashMap<>();
+        // K 线同时吸收真实成交和模拟成交，保证无人交易时图表也能连续更新。
         for (int i = ts.size() - 1; i >= 0; i--) {
             TradeEntity t = ts.get(i);
-            long epoch = t.getCreatedAt().getEpochSecond();
-            long bucket = epoch - (epoch % interval);
-            Bar b = bars.computeIfAbsent(bucket, Bar::new);
-            b.apply(t);
+            applyTradePoint(bars, interval, t.getCreatedAt(), t.getPrice(), t.getQty());
+        }
+        List<MarketMakerService.TradeSnapshot> synthetic = marketMakerService.recentTrades(pair.getSymbol(), 2400);
+        for (int i = synthetic.size() - 1; i >= 0; i--) {
+            MarketMakerService.TradeSnapshot t = synthetic.get(i);
+            applyTradePoint(bars, interval, t.createdAt(), t.price(), t.qty());
         }
         List<Long> keys = new ArrayList<>(bars.keySet());
         int from = Math.max(0, keys.size() - Math.min(limit, 200));
@@ -97,6 +114,13 @@ public class MarketService {
             out.add(b.toMap());
         }
         return out;
+    }
+
+    private void applyTradePoint(LinkedHashMap<Long, Bar> bars, long interval, Instant createdAt, long price, long qty) {
+        long epoch = createdAt.getEpochSecond();
+        long bucket = epoch - (epoch % interval);
+        Bar b = bars.computeIfAbsent(bucket, Bar::new);
+        b.apply(price, qty);
     }
 
     private List<Map<String, Object>> aggregateTopLevels(List<OrderEntity> orders, OrderSide side, int levels) {
@@ -126,6 +150,30 @@ public class MarketService {
         return out;
     }
 
+    private List<Map<String, Object>> mergeLevels(List<Map<String, Object>> real,
+            List<MarketMakerService.LevelSnapshot> synthetic, OrderSide side, int levels) {
+        TreeMap<Long, Long> merged = side == OrderSide.BUY ? new TreeMap<Long, Long>(Comparator.reverseOrder())
+                : new TreeMap<Long, Long>(Comparator.naturalOrder());
+        for (Map<String, Object> row : real) {
+            long price = ((Number) row.get("price")).longValue();
+            long qty = ((Number) row.get("qty")).longValue();
+            merged.merge(price, qty, Long::sum);
+        }
+        for (MarketMakerService.LevelSnapshot row : synthetic) {
+            merged.merge(row.price(), row.qty(), Long::sum);
+        }
+        ArrayList<Map<String, Object>> out = new ArrayList<>();
+        int i = 0;
+        for (Map.Entry<Long, Long> e : merged.entrySet()) {
+            out.add(Map.of("price", e.getKey(), "qty", e.getValue()));
+            i++;
+            if (i >= levels) {
+                break;
+            }
+        }
+        return out;
+    }
+
     private static final class Bar {
         private final long bucket;
         private long open;
@@ -139,15 +187,19 @@ public class MarketService {
         }
 
         private void apply(TradeEntity t) {
+            apply(t.getPrice(), t.getQty());
+        }
+
+        private void apply(long price, long qty) {
             if (volume == 0) {
-                open = t.getPrice();
-                high = t.getPrice();
-                low = t.getPrice();
+                open = price;
+                high = price;
+                low = price;
             }
-            high = Math.max(high, t.getPrice());
-            low = Math.min(low, t.getPrice());
-            close = t.getPrice();
-            volume += t.getQty();
+            high = Math.max(high, price);
+            low = Math.min(low, price);
+            close = price;
+            volume += qty;
         }
 
         private Map<String, Object> toMap() {

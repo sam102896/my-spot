@@ -1,3 +1,5 @@
+export const ATOMIC_DECIMALS = 8;
+
 export function formatAtomic(v: unknown, decimals = 8): string {
   if (v === null || v === undefined) return "-";
   let bi: bigint;
@@ -21,6 +23,10 @@ export function toNumber(v: unknown, decimals = 8): number {
   if (s === "-") return NaN;
   const n = Number(s);
   return Number.isFinite(n) ? n : NaN;
+}
+
+export function atomicToNumber(v: unknown): number {
+  return toNumber(v, ATOMIC_DECIMALS);
 }
 
 export function formatNumber(n: number, opts?: { decimals?: number; compact?: boolean }): string {

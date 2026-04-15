@@ -124,7 +124,7 @@ import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { http } from "../api/http";
 import { useAuthStore } from "../stores/auth";
 import { useToastStore } from "../stores/toast";
-import { formatNumber, toNumber } from "../utils/format";
+import { atomicToNumber, formatNumber, toNumber } from "../utils/format";
 import KlineTv from "../components/trade/KlineTv.vue";
 import OrderBookPanel from "../components/trade/OrderBookPanel.vue";
 import OrderFormPanel from "../components/trade/OrderFormPanel.vue";
@@ -210,8 +210,8 @@ async function loadMarket() {
   kline.value = kRes.data;
 
   const pd = pairMeta.value?.priceDecimals ?? 8;
-  bestBid.value = book.bids?.[0]?.price != null ? toNumber(book.bids[0].price, pd) : undefined;
-  bestAsk.value = book.asks?.[0]?.price != null ? toNumber(book.asks[0].price, pd) : undefined;
+  bestBid.value = book.bids?.[0]?.price != null ? atomicToNumber(book.bids[0].price) : undefined;
+  bestAsk.value = book.asks?.[0]?.price != null ? atomicToNumber(book.asks[0].price) : undefined;
 }
 
 async function loadOrders() {
@@ -362,17 +362,17 @@ const lastPrice = computed(() => {
   const pd = pairMeta.value?.priceDecimals ?? 8;
   const top = trades.value?.[0];
   if (top?.price == null) return NaN;
-  return toNumber(top.price, pd);
+  return atomicToNumber(top.price);
 });
 
-const lastPriceText = computed(() => formatNumber(lastPrice.value, { decimals: 2 }));
+const lastPriceText = computed(() => formatNumber(lastPrice.value, { decimals: pairMeta.value?.priceDecimals ?? 2 }));
 
 const change = computed(() => {
   const bars = kline.value;
   const pd = pairMeta.value?.priceDecimals ?? 8;
   if (!bars || bars.length < 2) return { abs: NaN, pct: NaN };
-  const first = toNumber(bars[0].o, pd);
-  const last = toNumber(bars[bars.length - 1].c, pd);
+  const first = atomicToNumber(bars[0].o);
+  const last = atomicToNumber(bars[bars.length - 1].c);
   if (!Number.isFinite(first) || !Number.isFinite(last) || first === 0) return { abs: NaN, pct: NaN };
   return { abs: last - first, pct: ((last - first) / first) * 100 };
 });
@@ -401,15 +401,15 @@ const stats = computed(() => {
   let low = Infinity;
   let vol = 0;
   for (const b of bars) {
-    const h = toNumber(b.h, pd);
-    const l = toNumber(b.l, pd);
-    const v = toNumber(b.v, qd);
+    const h = atomicToNumber(b.h);
+    const l = atomicToNumber(b.l);
+    const v = atomicToNumber(b.v);
     if (Number.isFinite(h)) high = Math.max(high, h);
     if (Number.isFinite(l)) low = Math.min(low, l);
     if (Number.isFinite(v)) vol += v;
   }
-  const open = toNumber(bars[0].o, pd);
-  const close = toNumber(bars[bars.length - 1].c, pd);
+  const open = atomicToNumber(bars[0].o);
+  const close = atomicToNumber(bars[bars.length - 1].c);
   return { open, close, high, low, vol, minutes: bars.length };
 });
 
@@ -420,9 +420,9 @@ const statsPeriodText = computed(() => {
   return `近 ${m}m`;
 });
 
-const statsHighText = computed(() => formatNumber(stats.value.high, { decimals: 2 }));
-const statsLowText = computed(() => formatNumber(stats.value.low, { decimals: 2 }));
-const statsVolText = computed(() => formatNumber(stats.value.vol, { decimals: 2, compact: true }));
+const statsHighText = computed(() => formatNumber(stats.value.high, { decimals: pairMeta.value?.priceDecimals ?? 2 }));
+const statsLowText = computed(() => formatNumber(stats.value.low, { decimals: pairMeta.value?.priceDecimals ?? 2 }));
+const statsVolText = computed(() => formatNumber(stats.value.vol, { decimals: pairMeta.value?.qtyDecimals ?? 2, compact: true }));
 
 function aggregateBars(bars: Bar[], minutes: number): Bar[] {
   if (minutes <= 1) return bars;
@@ -435,11 +435,11 @@ function aggregateBars(bars: Bar[], minutes: number): Bar[] {
     if (!Number.isFinite(ts)) continue;
     const sec = Math.floor(ts / 1000);
     const bucket = sec - (sec % intervalSec);
-    const o = toNumber(b.o, pd);
-    const h = toNumber(b.h, pd);
-    const l = toNumber(b.l, pd);
-    const c = toNumber(b.c, pd);
-    const v = toNumber(b.v, qd);
+    const o = atomicToNumber(b.o);
+    const h = atomicToNumber(b.h);
+    const l = atomicToNumber(b.l);
+    const c = atomicToNumber(b.c);
+    const v = atomicToNumber(b.v);
     const key = bucket;
     const existing = map.get(key);
     if (!existing) {
@@ -467,8 +467,8 @@ const chartBars = computed(() => {
 function upsertBarFromTrade(t: { price: unknown; qty: unknown; createdAt: string }) {
   const pd = pairMeta.value?.priceDecimals ?? 8;
   const qd = pairMeta.value?.qtyDecimals ?? 8;
-  const price = toNumber(t.price, pd);
-  const qty = toNumber(t.qty, qd);
+  const price = atomicToNumber(t.price);
+  const qty = atomicToNumber(t.qty);
   const ts = Date.parse(t.createdAt);
   if (!Number.isFinite(price) || !Number.isFinite(qty) || !Number.isFinite(ts)) return;
   const sec = Math.floor(ts / 1000);
@@ -476,10 +476,10 @@ function upsertBarFromTrade(t: { price: unknown; qty: unknown; createdAt: string
   const bucketIso = new Date(bucket * 1000).toISOString();
   const last = kline.value[kline.value.length - 1] as any;
   if (last && last.t === bucketIso) {
-    last.h = Math.max(toNumber(last.h, pd), price);
-    last.l = Math.min(toNumber(last.l, pd), price);
+    last.h = Math.max(atomicToNumber(last.h), price);
+    last.l = Math.min(atomicToNumber(last.l), price);
     last.c = price;
-    last.v = toNumber(last.v, qd) + qty;
+    last.v = atomicToNumber(last.v) + qty;
     kline.value = [...kline.value.slice(0, -1), last];
   } else {
     const bar = { t: bucketIso, o: price, h: price, l: price, c: price, v: qty };
@@ -489,8 +489,8 @@ function upsertBarFromTrade(t: { price: unknown; qty: unknown; createdAt: string
 
 function updateBestPrices() {
   const pd = pairMeta.value?.priceDecimals ?? 8;
-  bestBid.value = book.bids?.[0]?.price != null ? toNumber(book.bids[0].price, pd) : undefined;
-  bestAsk.value = book.asks?.[0]?.price != null ? toNumber(book.asks[0].price, pd) : undefined;
+  bestBid.value = book.bids?.[0]?.price != null ? atomicToNumber(book.bids[0].price) : undefined;
+  bestAsk.value = book.asks?.[0]?.price != null ? atomicToNumber(book.asks[0].price) : undefined;
 }
 
 onMounted(() => {

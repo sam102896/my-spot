@@ -77,7 +77,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { formatAtomic, formatNumber, toNumber } from "../../utils/format";
+import { atomicToNumber, formatNumber } from "../../utils/format";
 
 type Level = { price: unknown; qty: unknown };
 type WsStatus = "connecting" | "open" | "closed" | "error" | "";
@@ -130,7 +130,7 @@ function makeRows(side: "b" | "a", levels: Level[], kind: "buy" | "sell"): Row[]
   const cumArr: number[] = [];
   let cum = 0;
   for (const l of levels) {
-    const qn = toNumber(l.qty, qtyDecimals);
+    const qn = atomicToNumber(l.qty);
     cum += Number.isFinite(qn) ? qn : 0;
     cumArr.push(cum);
   }
@@ -139,9 +139,9 @@ function makeRows(side: "b" | "a", levels: Level[], kind: "buy" | "sell"): Row[]
   return levels.map((l, idx) => {
     const priceKey = keyOfPrice(l.price);
     const flashClass = flashMap.value.get(`${side}:${priceKey}`) ?? "";
-    const priceDisplay = formatNumber(toNumber(l.price, priceDecimals), { decimals: 2 });
-    const qtyDisplay = formatNumber(toNumber(l.qty, qtyDecimals), { decimals: 6 });
-    const cumDisplay = formatNumber(cumArr[idx], { decimals: 6, compact: true });
+    const priceDisplay = formatNumber(atomicToNumber(l.price), { decimals: priceDecimals });
+    const qtyDisplay = formatNumber(atomicToNumber(l.qty), { decimals: qtyDecimals });
+    const cumDisplay = formatNumber(cumArr[idx], { decimals: qtyDecimals, compact: true });
     const pct = Math.max(0, Math.min(100, (cumArr[idx] / maxCum) * 100));
     return { priceKey, priceDisplay, qtyDisplay, cumDisplay, pct, flashClass };
   });
@@ -212,4 +212,3 @@ onBeforeUnmount(() => {
   background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.18));
 }
 </style>
-

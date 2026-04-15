@@ -89,7 +89,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { formatAtomic, formatNumber, toNumber } from "../../utils/format";
+import { atomicToNumber, formatNumber } from "../../utils/format";
 import ConfirmDialog from "../ConfirmDialog.vue";
 
 type OrderLike = {
@@ -123,12 +123,12 @@ const list = computed(() => (tab.value === "open" ? props.openOrders : props.his
 
 function fmtPrice(v: unknown): string {
   const d = props.priceDecimals ?? 8;
-  return formatNumber(toNumber(v, d), { decimals: 2 });
+  return formatNumber(atomicToNumber(v), { decimals: d });
 }
 
 function fmtQty(v: unknown): string {
   const d = props.qtyDecimals ?? 8;
-  return formatNumber(toNumber(v, d), { decimals: 6 });
+  return formatNumber(atomicToNumber(v), { decimals: d });
 }
 
 function shortId(id: string): string {
@@ -163,14 +163,14 @@ const shown = computed(() => {
       return (ta - tb) * dir;
     }
     if (sortBy.value === "price") {
-      const paRaw = a.price == null ? NaN : toNumber(a.price, props.priceDecimals ?? 8);
-      const pbRaw = b.price == null ? NaN : toNumber(b.price, props.priceDecimals ?? 8);
+      const paRaw = a.price == null ? NaN : atomicToNumber(a.price);
+      const pbRaw = b.price == null ? NaN : atomicToNumber(b.price);
       const pa = Number.isFinite(paRaw) ? paRaw : 0;
       const pb = Number.isFinite(pbRaw) ? pbRaw : 0;
       return (pa - pb) * dir;
     }
-    const qaRaw = toNumber(a.origQty, props.qtyDecimals ?? 8);
-    const qbRaw = toNumber(b.origQty, props.qtyDecimals ?? 8);
+    const qaRaw = atomicToNumber(a.origQty);
+    const qbRaw = atomicToNumber(b.origQty);
     const qa = Number.isFinite(qaRaw) ? qaRaw : 0;
     const qb = Number.isFinite(qbRaw) ? qbRaw : 0;
     return (qa - qb) * dir;

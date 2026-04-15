@@ -34,7 +34,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { formatNumber, formatTimeHms, toNumber } from "../../utils/format";
+import { atomicToNumber, formatNumber, formatTimeHms } from "../../utils/format";
 
 type Trade = { price: unknown; qty: unknown; createdAt: string };
 
@@ -65,10 +65,10 @@ const rows = computed(() => {
 
   let prevPx = NaN;
   for (const t of props.trades ?? []) {
-    const pn = toNumber(t.price, priceDecimals);
-    const qn = toNumber(t.qty, qtyDecimals);
-    const px = formatNumber(pn, { decimals: 2 });
-    const qty = formatNumber(qn, { decimals: 6 });
+    const pn = atomicToNumber(t.price);
+    const qn = atomicToNumber(t.qty);
+    const px = formatNumber(pn, { decimals: priceDecimals });
+    const qty = formatNumber(qn, { decimals: qtyDecimals });
     const time = formatTimeHms(t.createdAt);
 
     let color = "var(--muted)";
@@ -102,4 +102,3 @@ onBeforeUnmount(() => {
   if (timer) window.clearTimeout(timer);
 });
 </script>
-

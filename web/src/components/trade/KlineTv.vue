@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { createChart, ColorType, CrosshairMode, ISeriesApi, UTCTimestamp } from "lightweight-charts";
 import { onMounted, onBeforeUnmount, ref, watch } from "vue";
-import { toNumber } from "../../utils/format";
+import { atomicToNumber } from "../../utils/format";
 
 type Bar = { t: string; o: unknown; h: unknown; l: unknown; c: unknown; v: unknown };
 
@@ -25,10 +25,10 @@ function toCandleData(b: Bar) {
   const time = Math.floor(Date.parse(b.t) / 1000) as UTCTimestamp;
   return {
     time,
-    open: toNumber(b.o, 8),
-    high: toNumber(b.h, 8),
-    low: toNumber(b.l, 8),
-    close: toNumber(b.c, 8)
+    open: atomicToNumber(b.o),
+    high: atomicToNumber(b.h),
+    low: atomicToNumber(b.l),
+    close: atomicToNumber(b.c)
   };
 }
 
@@ -36,7 +36,7 @@ function toVolData(b: Bar) {
   const time = Math.floor(Date.parse(b.t) / 1000) as UTCTimestamp;
   return {
     time,
-    value: toNumber(b.v, 8),
+    value: atomicToNumber(b.v),
     color: "rgba(148,163,184,0.45)"
   };
 }
@@ -48,7 +48,7 @@ function calcMa(period: number, bars: Bar[]) {
     let s = 0;
     let ok = true;
     for (let j = i + 1 - period; j <= i; j++) {
-      const v = toNumber(bars[j].c, 8);
+      const v = atomicToNumber(bars[j].c);
       if (!Number.isFinite(v)) {
         ok = false;
         break;
