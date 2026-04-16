@@ -8,7 +8,6 @@ import com.spot.common.web.DevAdminGuard;
 import com.spot.common.web.RequestContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,17 +28,20 @@ public class DevAdminController {
     }
 
     @PostMapping("/deposits/simulate")
-    public Map<String, Object> simulateDeposit(@RequestBody SimDepositReq req, HttpServletRequest http) {
+    public SimDepositRes simulateDeposit(@RequestBody SimDepositReq req, HttpServletRequest http) {
         guard.require(http);
         var u = userRepo.findByIdentifier(req.identifier.trim())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "账号不存在"));
         long amount = Atomic.parse(req.amount, Atomic.DEFAULT_DECIMALS);
         var d = depositService.simulateIncomingDeposit(u.getId(), req.asset.toUpperCase(), amount, req.txId,
                 RequestContext.ip(http), RequestContext.deviceId(http));
-        return Map.of("id", d.getId().toString(), "txId", d.getTxId(), "status", d.getStatus().name());
+        return new SimDepositRes(d.getId().toString(), d.getTxId(), d.getStatus().name());
     }
 
     public record SimDepositReq(@NotBlank String identifier, @NotBlank String asset, @NotBlank String amount,
             String txId) {
+    }
+
+    public record SimDepositRes(String id, String txId, String status) {
     }
 }

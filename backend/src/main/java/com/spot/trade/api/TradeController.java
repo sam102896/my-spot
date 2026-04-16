@@ -5,11 +5,10 @@ import com.spot.security.Auth;
 import com.spot.trade.entity.OrderEntity;
 import com.spot.trade.model.OrderSide;
 import com.spot.trade.model.OrderType;
-import com.spot.trade.service.TradingService;
+import com.spot.trade.service.TradeOrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,29 +22,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/trade")
 public class TradeController {
-    private final TradingService tradingService;
+    private final TradeOrderService tradingService;
 
-    public TradeController(TradingService tradingService) {
+    public TradeController(TradeOrderService tradingService) {
         this.tradingService = tradingService;
     }
 
     @PostMapping("/order")
-    public Map<String, Object> place(@RequestBody PlaceOrderReq req, @RequestHeader("X-Idempotency-Key") String idemKey,
+    public PlaceOrderRes place(@RequestBody PlaceOrderReq req, @RequestHeader("X-Idempotency-Key") String idemKey,
             HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
-        OrderEntity o = tradingService.placeOrder(userId, req.pair, OrderSide.valueOf(req.side),
-                OrderType.valueOf(req.type), req.price, req.qty, req.clientOrderId, idemKey, RequestContext.ip(http),
-                RequestContext.deviceId(http));
-        return Map.of("id", o.getId().toString(), "status", o.getStatus().name(), "filledQty", o.getFilledQty(),
-                "origQty", o.getOrigQty(), "reservedQuote", o.getReservedQuote());
+        OrderEntity o = tradingService.placeOrder(new TradeOrderService.PlaceOrderCommand(userId, req.pair,
+                OrderSide.valueOf(req.side), OrderType.valueOf(req.type), req.price, req.qty, req.clientOrderId,
+                idemKey, RequestContext.ip(http), RequestContext.deviceId(http)));
+        return new PlaceOrderRes(o.getId().toString(), o.getStatus().name(), o.getFilledQty(), o.getOrigQty(),
+                o.getReservedQuote());
     }
 
     @PostMapping("/order/{id}/cancel")
-    public Map<String, Object> cancel(@PathVariable("id") String id, HttpServletRequest http) {
+    public CancelOrderRes cancel(@PathVariable("id") String id, HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
-        OrderEntity o = tradingService.cancel(userId, UUID.fromString(id), RequestContext.ip(http),
-                RequestContext.deviceId(http));
-        return Map.of("id", o.getId().toString(), "status", o.getStatus().name());
+        OrderEntity o = tradingService.cancelOrder(new TradeOrderService.CancelOrderCommand(userId, UUID.fromString(id),
+                RequestContext.ip(http), RequestContext.deviceId(http)));
+        return new CancelOrderRes(o.getId().toString(), o.getStatus().name());
     }
 
     @GetMapping("/open-orders")
@@ -62,5 +61,11 @@ public class TradeController {
 
     public record PlaceOrderReq(@NotBlank String pair, @NotBlank String side, @NotBlank String type, String price,
             @NotBlank String qty, String clientOrderId) {
+    }
+
+    public record PlaceOrderRes(String id, String status, long filledQty, long origQty, long reservedQuote) {
+    }
+
+    public record CancelOrderRes(String id, String status) {
     }
 }

@@ -21,10 +21,8 @@ import com.spot.common.web.RequestContext;
 import com.spot.security.Auth;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
-import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -71,43 +69,37 @@ public class AccountController {
     }
 
     @GetMapping("/me")
-    public Map<String, Object> me() {
+    public MeRes me() {
         UUID userId = UUID.fromString(Auth.requireUserId());
         UserEntity u = userRepo.findById(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "用户不存在"));
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("id", u.getId().toString());
-        out.put("email", u.getEmail());
-        out.put("phone", u.getPhone());
-        out.put("name", u.getName());
-        out.put("kycStatus", u.getKycStatus().name());
-        out.put("status", u.getStatus().name());
-        return out;
+        return new MeRes(u.getId().toString(), u.getEmail(), u.getPhone(), u.getName(), u.getKycStatus().name(),
+                u.getStatus().name());
     }
 
     @PostMapping("/kyc")
-    public Map<String, Object> kyc(@RequestBody KycReq req, HttpServletRequest http) {
+    public KycRes kyc(@RequestBody KycReq req, HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         UserEntity u = kycService.submitBasicKyc(userId, req.name, RequestContext.ip(http),
                 RequestContext.deviceId(http));
-        return Map.of("kycStatus", u.getKycStatus().name(), "name", u.getName());
+        return new KycRes(u.getKycStatus().name(), u.getName());
     }
 
     @GetMapping("/wallets")
-    public List<Map<String, Object>> wallets() {
+    public List<WalletRes> wallets() {
         UUID userId = UUID.fromString(Auth.requireUserId());
         var ws = walletService.listWallets(userId);
-        List<Map<String, Object>> out = new ArrayList<>();
+        List<WalletRes> out = new ArrayList<>();
         for (var w : ws) {
             AssetEntity a = assetRepo.findById(w.getAssetId()).orElse(null);
-            out.add(Map.of("asset", a == null ? w.getAssetId().toString() : a.getSymbol(), "available",
-                    w.getAvailable(), "frozen", w.getFrozen()));
+            out.add(new WalletRes(a == null ? w.getAssetId().toString() : a.getSymbol(), w.getAvailable(),
+                    w.getFrozen()));
         }
         return out;
     }
 
     @GetMapping("/ledger")
-    public List<Map<String, Object>> ledger(@RequestParam(value = "asset", required = false) String asset,
+    public List<LedgerRes> ledger(@RequestParam(value = "asset", required = false) String asset,
             @RequestParam(value = "limit", defaultValue = "50") int limit) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         int size = Math.min(limit, 200);
@@ -115,87 +107,85 @@ public class AccountController {
                 ? ledgerRepo.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, size))
                 : ledgerRepo.findByUserIdAndAssetIdOrderByCreatedAtDesc(userId, assetId(asset),
                         PageRequest.of(0, size));
-        List<Map<String, Object>> out = new ArrayList<>();
+        List<LedgerRes> out = new ArrayList<>();
         for (var e : items) {
             AssetEntity a = assetRepo.findById(e.getAssetId()).orElse(null);
-            out.add(Map.of("asset", a == null ? e.getAssetId().toString() : a.getSymbol(), "type", e.getType().name(),
-                    "amount", e.getAmount(), "availableAfter", e.getAvailableAfter(), "frozenAfter", e.getFrozenAfter(),
-                    "refType", e.getRefType(), "refId", e.getRefId(), "createdAt", e.getCreatedAt().toString()));
+            out.add(new LedgerRes(a == null ? e.getAssetId().toString() : a.getSymbol(), e.getType().name(),
+                    e.getAmount(), e.getAvailableAfter(), e.getFrozenAfter(), e.getRefType(), e.getRefId(),
+                    e.getCreatedAt().toString()));
         }
         return out;
     }
 
     @GetMapping("/deposit/address")
-    public Map<String, Object> depositAddress(@RequestParam("asset") @NotBlank String asset) {
+    public DepositAddressRes depositAddress(@RequestParam("asset") @NotBlank String asset) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         DepositAddressEntity a = depositService.getOrCreateAddress(userId, asset.toUpperCase());
-        return Map.of("asset", asset.toUpperCase(), "address", a.getAddress());
+        return new DepositAddressRes(asset.toUpperCase(), a.getAddress());
     }
 
     @GetMapping("/deposits")
-    public List<Map<String, Object>> deposits(@RequestParam(value = "limit", defaultValue = "50") int limit) {
+    public List<DepositRes> deposits(@RequestParam(value = "limit", defaultValue = "50") int limit) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         var ds = depositRepo.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, Math.min(limit, 200)));
-        List<Map<String, Object>> out = new ArrayList<>();
+        List<DepositRes> out = new ArrayList<>();
         for (var d : ds) {
             AssetEntity a = assetRepo.findById(d.getAssetId()).orElse(null);
-            out.add(Map.of("id", d.getId().toString(), "asset", a == null ? d.getAssetId().toString() : a.getSymbol(),
-                    "amount", d.getAmount(), "txId", d.getTxId(), "status", d.getStatus().name(), "createdAt",
-                    d.getCreatedAt().toString()));
+            out.add(new DepositRes(d.getId().toString(), a == null ? d.getAssetId().toString() : a.getSymbol(),
+                    d.getAmount(), d.getTxId(), d.getStatus().name(), d.getCreatedAt().toString()));
         }
         return out;
     }
 
     @PostMapping("/withdraw")
-    public Map<String, Object> withdraw(@RequestBody WithdrawReq req, HttpServletRequest http) {
+    public WithdrawRes withdraw(@RequestBody WithdrawReq req, HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         long amount = Atomic.parse(req.amount, Atomic.DEFAULT_DECIMALS);
         var w = withdrawalService.requestWithdraw(userId, req.asset.toUpperCase(), req.address, amount,
                 req.fundPassword, RequestContext.ip(http), RequestContext.deviceId(http));
-        return Map.of("id", w.getId().toString(), "status", w.getStatus().name(), "fee", w.getFee());
+        return new WithdrawRes(w.getId().toString(), w.getStatus().name(), w.getFee());
     }
 
     @PostMapping("/withdraw/{id}/cancel")
-    public Map<String, Object> cancelWithdraw(@PathVariable("id") String id, HttpServletRequest http) {
+    public CancelWithdrawRes cancelWithdraw(@PathVariable("id") String id, HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         var w = withdrawalService.cancel(userId, UUID.fromString(id), RequestContext.ip(http),
                 RequestContext.deviceId(http));
-        return Map.of("id", w.getId().toString(), "status", w.getStatus().name());
+        return new CancelWithdrawRes(w.getId().toString(), w.getStatus().name());
     }
 
     @GetMapping("/withdrawals")
-    public List<Map<String, Object>> withdrawals(@RequestParam(value = "limit", defaultValue = "50") int limit) {
+    public List<WithdrawalRes> withdrawals(@RequestParam(value = "limit", defaultValue = "50") int limit) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         var ws = withdrawalRepo.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, Math.min(limit, 200)));
-        List<Map<String, Object>> out = new ArrayList<>();
+        List<WithdrawalRes> out = new ArrayList<>();
         for (var w : ws) {
             AssetEntity a = assetRepo.findById(w.getAssetId()).orElse(null);
-            out.add(Map.of("id", w.getId().toString(), "asset", a == null ? w.getAssetId().toString() : a.getSymbol(),
-                    "amount", w.getAmount(), "fee", w.getFee(), "address", w.getAddress(), "status",
-                    w.getStatus().name(), "createdAt", w.getCreatedAt().toString(), "updatedAt",
+            out.add(new WithdrawalRes(w.getId().toString(), a == null ? w.getAssetId().toString() : a.getSymbol(),
+                    w.getAmount(), w.getFee(), w.getAddress(), w.getStatus().name(), w.getCreatedAt().toString(),
                     w.getUpdatedAt().toString()));
         }
         return out;
     }
 
     @PostMapping("/password/login")
-    public Map<String, Object> changeLoginPassword(@RequestBody ChangeLoginPasswordReq req, HttpServletRequest http) {
+    public OkRes changeLoginPassword(@RequestBody ChangeLoginPasswordReq req, HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         authService.changeLoginPassword(userId, req.oldPassword, req.newPassword, RequestContext.ip(http),
                 RequestContext.deviceId(http));
-        return Map.of("ok", true);
+        return new OkRes(true);
     }
 
     @PostMapping("/password/fund")
-    public Map<String, Object> setFundPassword(@RequestBody SetFundPasswordReq req, HttpServletRequest http) {
+    public OkRes setFundPassword(@RequestBody SetFundPasswordReq req, HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         authService.setOrChangeFundPassword(userId, req.loginPassword, req.newFundPassword, RequestContext.ip(http),
                 RequestContext.deviceId(http));
-        return Map.of("ok", true);
+        return new OkRes(true);
     }
 
     @PostMapping("/devices/bind")
-    public Map<String, Object> bindDevice(@RequestBody BindDeviceReq req, HttpServletRequest http) {
+    public BindDeviceRes bindDevice(@RequestBody BindDeviceReq req, HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         String deviceId = RequestContext.deviceId(http);
         var d = deviceRepo.findByUserIdAndDeviceId(userId, deviceId).orElseGet(() -> {
@@ -210,20 +200,16 @@ public class AccountController {
             d.setLabel(req.label.trim());
         }
         deviceRepo.save(d);
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("deviceId", d.getDeviceId());
-        out.put("label", d.getLabel());
-        return out;
+        return new BindDeviceRes(d.getDeviceId(), d.getLabel());
     }
 
     @GetMapping("/logs")
-    public List<Map<String, Object>> logs(@RequestParam(value = "limit", defaultValue = "50") int limit) {
+    public List<LogRes> logs(@RequestParam(value = "limit", defaultValue = "50") int limit) {
         UUID userId = UUID.fromString(Auth.requireUserId());
         var logs = logRepo.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, Math.min(limit, 200)));
-        List<Map<String, Object>> out = new ArrayList<>();
+        List<LogRes> out = new ArrayList<>();
         for (var l : logs) {
-            out.add(Map.of("type", l.getType(), "ip", l.getIp(), "deviceId", l.getDeviceId(), "detail",
-                    l.getDetailJson(), "createdAt", l.getCreatedAt().toString()));
+            out.add(new LogRes(l.getType(), l.getIp(), l.getDeviceId(), l.getDetailJson(), l.getCreatedAt().toString()));
         }
         return out;
     }
@@ -247,5 +233,43 @@ public class AccountController {
     }
 
     public record BindDeviceReq(String label) {
+    }
+
+    public record MeRes(String id, String email, String phone, String name, String kycStatus, String status) {
+    }
+
+    public record KycRes(String kycStatus, String name) {
+    }
+
+    public record WalletRes(String asset, long available, long frozen) {
+    }
+
+    public record LedgerRes(String asset, String type, long amount, long availableAfter, long frozenAfter,
+            String refType, String refId, String createdAt) {
+    }
+
+    public record DepositAddressRes(String asset, String address) {
+    }
+
+    public record DepositRes(String id, String asset, long amount, String txId, String status, String createdAt) {
+    }
+
+    public record WithdrawRes(String id, String status, long fee) {
+    }
+
+    public record CancelWithdrawRes(String id, String status) {
+    }
+
+    public record WithdrawalRes(String id, String asset, long amount, long fee, String address, String status,
+            String createdAt, String updatedAt) {
+    }
+
+    public record OkRes(boolean ok) {
+    }
+
+    public record BindDeviceRes(String deviceId, String label) {
+    }
+
+    public record LogRes(String type, String ip, String deviceId, String detail, String createdAt) {
     }
 }

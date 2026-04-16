@@ -1,7 +1,6 @@
 package com.spot.trade.service;
 
 import com.spot.account.model.LedgerType;
-import com.spot.account.service.WalletService;
 import com.spot.common.money.Atomic;
 import com.spot.trade.entity.OrderEntity;
 import com.spot.trade.entity.TradeEntity;
@@ -26,20 +25,27 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
-public class MatchingEngine {
+public class MatchingEngine implements TradeMatchingService, TradeEngineAware {
     private final OrderRepo orderRepo;
     private final TradeRepo tradeRepo;
-    private final WalletService walletService;
+    private final TradePositionService positionService;
     private final MarketHub marketHub;
     private final ConcurrentHashMap<UUID, ReentrantLock> pairLocks = new ConcurrentHashMap<>();
 
-    public MatchingEngine(OrderRepo orderRepo, TradeRepo tradeRepo, WalletService walletService, MarketHub marketHub) {
+    public MatchingEngine(OrderRepo orderRepo, TradeRepo tradeRepo, TradePositionService positionService,
+            MarketHub marketHub) {
         this.orderRepo = orderRepo;
         this.tradeRepo = tradeRepo;
-        this.walletService = walletService;
+        this.positionService = positionService;
         this.marketHub = marketHub;
     }
 
+    @Override
+    public TradeEngineType engineType() {
+        return TradeEngineType.DB;
+    }
+
+    @Override
     public List<TradeEntity> match(TradingPairEntity pair, OrderEntity taker) {
         ReentrantLock lock = pairLocks.computeIfAbsent(pair.getId(), k -> new ReentrantLock());
         lock.lock();
@@ -105,7 +111,7 @@ public class MatchingEngine {
             long makerFee = fee(quoteQty, pair.getFeeBps());
             long takerFee = fee(quoteQty, pair.getFeeBps());
 
-            settle(pair, maker, taker, tradePrice, tradeQty, quoteQty, makerFee, takerFee);
+            positionService.settleTrade(pair, maker, taker, tradeQty, quoteQty, makerFee, takerFee);
 
             maker.setFilledQty(maker.getFilledQty() + tradeQty);
             maker.setStatus(
@@ -145,54 +151,16 @@ public class MatchingEngine {
         return trades;
     }
 
-    private void settle(TradingPairEntity pair, OrderEntity maker, OrderEntity taker, long tradePrice, long tradeQty,
-            long quoteQty, long makerFee, long takerFee) {
-        UUID base = pair.getBaseAssetId();
-        UUID quote = pair.getQuoteAssetId();
-
-        boolean makerIsSell = maker.getSide() == OrderSide.SELL;
-        UUID buyerUserId = makerIsSell ? taker.getUserId() : maker.getUserId();
-        UUID sellerUserId = makerIsSell ? maker.getUserId() : taker.getUserId();
-        boolean takerIsBuy = taker.getSide() == OrderSide.BUY;
-        long buyerFee = takerIsBuy ? takerFee : makerFee;
-        long sellerFee = takerIsBuy ? makerFee : takerFee;
-
-        long buyerSpend = Math.addExact(quoteQty, buyerFee);
-        walletService.spendFrozen(buyerUserId, quote, quoteQty, LedgerType.TRADE, "TRADE", taker.getId().toString());
-        if (buyerFee > 0) {
-            walletService.spendFrozen(buyerUserId, quote, buyerFee, LedgerType.FEE, "TRADE", taker.getId().toString());
-        }
-        if (takerIsBuy) {
-            taker.setReservedQuote(Math.max(0, taker.getReservedQuote() - buyerSpend));
-        } else {
-            maker.setReservedQuote(Math.max(0, maker.getReservedQuote() - buyerSpend));
-        }
-
-        walletService.addAvailable(buyerUserId, base, tradeQty, LedgerType.TRADE, "TRADE", taker.getId().toString());
-
-        walletService.spendFrozen(sellerUserId, base, tradeQty, LedgerType.TRADE, "TRADE", taker.getId().toString());
-        walletService.addAvailable(sellerUserId, quote, quoteQty, LedgerType.TRADE, "TRADE", taker.getId().toString());
-        if (sellerFee > 0) {
-            walletService.spendAvailable(sellerUserId, quote, sellerFee, LedgerType.FEE, "TRADE",
-                    taker.getId().toString());
-        }
-    }
-
     private void releaseBuyPriceImprovement(TradingPairEntity pair, OrderEntity buyOrder) {
         if (buyOrder.getPrice() == null) {
             return;
         }
         long remainingQty = buyOrder.getOrigQty() - buyOrder.getFilledQty();
         long required = requiredQuoteForBuyLimit(buyOrder.getPrice(), remainingQty, pair.getFeeBps());
-        if (buyOrder.getReservedQuote() > required) {
-            long delta = buyOrder.getReservedQuote() - required;
-            walletService.unfreezeToAvailable(buyOrder.getUserId(), pair.getQuoteAssetId(), delta, "ORDER",
-                    buyOrder.getId().toString());
-            buyOrder.setReservedQuote(required);
-            orderRepo.save(buyOrder);
-        }
+        positionService.releaseBuyPriceImprovement(pair, buyOrder, required);
     }
 
+    @Override
     public long requiredQuoteForBuyLimit(long priceAtomic, long qtyAtomic, int feeBps) {
         if (qtyAtomic <= 0) {
             return 0;

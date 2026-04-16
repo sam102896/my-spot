@@ -97,6 +97,9 @@ public class AppProperties {
     public static class Trading {
         private int defaultFeeBps;
         private int klineIntervalSeconds;
+        private String engineType = "db";
+        private String consensusType = "local";
+        private MarketMaker marketMaker = new MarketMaker();
 
         public int getDefaultFeeBps() {
             return defaultFeeBps;
@@ -112,6 +115,114 @@ public class AppProperties {
 
         public void setKlineIntervalSeconds(int klineIntervalSeconds) {
             this.klineIntervalSeconds = klineIntervalSeconds;
+        }
+
+        public String getEngineType() {
+            return engineType;
+        }
+
+        public void setEngineType(String engineType) {
+            this.engineType = engineType;
+        }
+
+        public String getConsensusType() {
+            return consensusType;
+        }
+
+        public void setConsensusType(String consensusType) {
+            this.consensusType = consensusType;
+        }
+
+        public MarketMaker getMarketMaker() {
+            return marketMaker;
+        }
+
+        public void setMarketMaker(MarketMaker marketMaker) {
+            this.marketMaker = marketMaker;
+        }
+    }
+
+    public static class MarketMaker {
+        private boolean enabled = true;
+        private boolean useBinancePrice = true;
+        private int levels = 10;
+        private int spreadBps = 6;
+        private int refreshMs = 1200;
+        private int tradePulseMs = 1500;
+        private int binanceWatchdogMs = 15000;
+        private String minQty = "0.001";
+        private String maxQty = "0.08";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public boolean isUseBinancePrice() {
+            return useBinancePrice;
+        }
+
+        public void setUseBinancePrice(boolean useBinancePrice) {
+            this.useBinancePrice = useBinancePrice;
+        }
+
+        public int getLevels() {
+            return levels;
+        }
+
+        public void setLevels(int levels) {
+            this.levels = levels;
+        }
+
+        public int getSpreadBps() {
+            return spreadBps;
+        }
+
+        public void setSpreadBps(int spreadBps) {
+            this.spreadBps = spreadBps;
+        }
+
+        public int getRefreshMs() {
+            return refreshMs;
+        }
+
+        public void setRefreshMs(int refreshMs) {
+            this.refreshMs = refreshMs;
+        }
+
+        public int getTradePulseMs() {
+            return tradePulseMs;
+        }
+
+        public void setTradePulseMs(int tradePulseMs) {
+            this.tradePulseMs = tradePulseMs;
+        }
+
+        public int getBinanceWatchdogMs() {
+            return binanceWatchdogMs;
+        }
+
+        public void setBinanceWatchdogMs(int binanceWatchdogMs) {
+            this.binanceWatchdogMs = binanceWatchdogMs;
+        }
+
+        public String getMinQty() {
+            return minQty;
+        }
+
+        public void setMinQty(String minQty) {
+            this.minQty = minQty;
+        }
+
+        public String getMaxQty() {
+            return maxQty;
+        }
+
+        public void setMaxQty(String maxQty) {
+            this.maxQty = maxQty;
         }
     }
 }
