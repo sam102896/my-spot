@@ -3,7 +3,7 @@
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">资产</div>
-        <button class="btn btn-primary" @click="refresh" :disabled="loading">{{ loading ? "刷新中…" : "刷新" }}</button>
+        <button class="btn btn-primary btn-sm" @click="refresh" :disabled="loading">{{ loading ? "刷新中…" : "刷新" }}</button>
       </div>
       <div class="panel-body">
         <div v-if="!auth.token" class="badge" style="border-color: rgba(239, 68, 68, 0.25)">
@@ -57,7 +57,7 @@
               <div class="muted">金额</div>
               <input v-model="dep.amount" class="input mono" />
             </label>
-            <button class="btn btn-primary btn-sm" @click="getAddress" :disabled="loading">获取充值地址</button>
+            <button class="btn btn-primary btn-sm" @click="getAddress" :disabled="loading">获取地址</button>
           </div>
           <div v-if="dep.address" class="badge" style="width: fit-content">
             <span class="muted">地址</span>
@@ -103,7 +103,7 @@
               <div class="muted">资金密码</div>
               <input v-model="wd.fundPassword" class="input mono" type="password" />
             </label>
-            <button class="btn btn-sell btn-sm" @click="withdraw" :disabled="loading" style="font-weight: 800">发起提现</button>
+            <button class="btn btn-sell btn-sm" @click="withdraw" :disabled="loading" style="font-weight: 700">提现</button>
           </div>
           <div v-if="wd.msg" class="badge" style="border-color: rgba(22, 163, 74, 0.28)">
             <span class="dot ok" />
@@ -164,7 +164,7 @@
               <td align="right">{{ fmtAmount(w.fee) }}</td>
               <td>{{ w.status }}</td>
               <td>
-                <button v-if="w.status === 'PENDING'" class="btn btn-sell" @click="askCancel(w.id)" :disabled="loading">
+                <button v-if="w.status === 'PENDING'" class="btn btn-sell btn-sm" @click="askCancel(w.id)" :disabled="loading">
                   撤销
                 </button>
               </td>

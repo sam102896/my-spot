@@ -7,10 +7,15 @@
           <span>my-spot</span>
         </div>
         <nav class="nav">
-          <RouterLink class="nav-link" to="/trade">{{ t.navTrade }}</RouterLink>
-          <RouterLink class="nav-link" to="/wallet">{{ t.navWallet }}</RouterLink>
-          <RouterLink class="nav-link" to="/kyc">{{ t.navKyc }}</RouterLink>
-          <RouterLink class="nav-link" to="/login">{{ t.navLogin }}</RouterLink>
+          <button class="nav-link nav-btn" :class="{ active: route.path === '/trade' }" @click="go('/trade')">
+            {{ t.navTrade }}
+          </button>
+          <button class="nav-link nav-btn" :class="{ active: route.path === '/wallet' }" @click="go('/wallet')">
+            {{ t.navWallet }}
+          </button>
+          <button class="nav-link nav-btn" :class="{ active: route.path === '/login' }" @click="go('/login')">
+            {{ t.navLogin }}
+          </button>
         </nav>
       </div>
 
@@ -22,8 +27,6 @@
         <span v-if="auth.me" class="badge">
           <span class="dot ok" />
           <span class="mono">{{ auth.me.email || auth.me.phone }}</span>
-          <span class="muted">·</span>
-          <span class="mono">{{ auth.me.kycStatus }}</span>
         </span>
         <button v-if="auth.token" class="btn btn-primary" @click="logout">{{ t.logout }}</button>
       </div>
@@ -38,7 +41,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { RouterLink, RouterView, useRouter } from "vue-router";
+import { RouterView, useRoute, useRouter } from "vue-router";
 import ToastHost from "./components/ToastHost.vue";
 import { useAuthStore } from "./stores/auth";
 import { http } from "./api/http";
@@ -47,14 +50,15 @@ import { useUiStore } from "./stores/ui";
 
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 const toast = useToastStore();
 const ui = useUiStore();
+const navigating = { value: false };
 
 const dict = {
   zh: {
     navTrade: "交易",
     navWallet: "资产",
-    navKyc: "KYC",
     navLogin: "登录",
     logout: "退出",
     dark: "深色",
@@ -63,7 +67,6 @@ const dict = {
   en: {
     navTrade: "Trade",
     navWallet: "Wallet",
-    navKyc: "KYC",
     navLogin: "Login",
     logout: "Logout",
     dark: "Dark",
@@ -82,6 +85,20 @@ async function loadMe() {
 async function logout() {
   auth.clear();
   await router.push("/login");
+}
+
+async function go(path: string) {
+  if (route.path === path || navigating.value) return;
+  navigating.value = true;
+  try {
+    await router.push(path);
+  } catch {
+    // 忽略重复导航或瞬时切换异常，避免打断顶部导航交互。
+  } finally {
+    window.setTimeout(() => {
+      navigating.value = false;
+    }, 80);
+  }
 }
 
 onMounted(() => {

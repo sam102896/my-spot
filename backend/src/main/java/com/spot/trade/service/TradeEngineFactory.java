@@ -1,51 +1,70 @@
 package com.spot.trade.service;
 
 import com.spot.config.AppProperties;
-import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component
 public class TradeEngineFactory {
     private final AppProperties appProperties;
-    private final List<TradeOrderService> orderServices;
-    private final List<TradeMatchingService> matchingServices;
-    private final List<TradePositionService> positionServices;
-    private final List<TradeRiskService> riskServices;
+    private final TradingService dbOrderService;
+    private final MatchingEngine dbMatchingService;
+    private final DbTradePositionService dbPositionService;
+    private final DbTradeRiskService dbRiskService;
+    private final KafkaTradeEngineAdapter kafkaEngine;
+    private final AeronTradeEngineAdapter aeronEngine;
+    private final MemoryTradeEngineAdapter memoryEngine;
 
-    public TradeEngineFactory(AppProperties appProperties, List<TradeOrderService> orderServices,
-            List<TradeMatchingService> matchingServices, List<TradePositionService> positionServices,
-            List<TradeRiskService> riskServices) {
+    public TradeEngineFactory(AppProperties appProperties, TradingService dbOrderService,
+            MatchingEngine dbMatchingService, DbTradePositionService dbPositionService, DbTradeRiskService dbRiskService,
+            KafkaTradeEngineAdapter kafkaEngine, AeronTradeEngineAdapter aeronEngine,
+            MemoryTradeEngineAdapter memoryEngine) {
         this.appProperties = appProperties;
-        this.orderServices = orderServices;
-        this.matchingServices = matchingServices;
-        this.positionServices = positionServices;
-        this.riskServices = riskServices;
+        this.dbOrderService = dbOrderService;
+        this.dbMatchingService = dbMatchingService;
+        this.dbPositionService = dbPositionService;
+        this.dbRiskService = dbRiskService;
+        this.kafkaEngine = kafkaEngine;
+        this.aeronEngine = aeronEngine;
+        this.memoryEngine = memoryEngine;
     }
 
     public TradeOrderService orderService() {
-        return resolve(orderServices, TradeOrderService.class);
+        return switch (currentType()) {
+            case DB -> dbOrderService;
+            case KAFKA -> kafkaEngine;
+            case AERON -> aeronEngine;
+            case MEMORY -> memoryEngine;
+        };
     }
 
     public TradeMatchingService matchingService() {
-        return resolve(matchingServices, TradeMatchingService.class);
+        return switch (currentType()) {
+            case DB -> dbMatchingService;
+            case KAFKA -> kafkaEngine;
+            case AERON -> aeronEngine;
+            case MEMORY -> memoryEngine;
+        };
     }
 
     public TradePositionService positionService() {
-        return resolve(positionServices, TradePositionService.class);
+        return switch (currentType()) {
+            case DB -> dbPositionService;
+            case KAFKA -> kafkaEngine;
+            case AERON -> aeronEngine;
+            case MEMORY -> memoryEngine;
+        };
     }
 
     public TradeRiskService riskService() {
-        return resolve(riskServices, TradeRiskService.class);
+        return switch (currentType()) {
+            case DB -> dbRiskService;
+            case KAFKA -> kafkaEngine;
+            case AERON -> aeronEngine;
+            case MEMORY -> memoryEngine;
+        };
     }
 
-    private <T> T resolve(List<T> candidates, Class<T> role) {
-        TradeEngineType type = TradeEngineType.from(appProperties.getTrading().getEngineType());
-        for (T candidate : candidates) {
-            if (candidate instanceof TradeEngineAware aware && aware.engineType() == type) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException("No trade engine implementation for role=" + role.getSimpleName() + ", type="
-                + type);
+    private TradeEngineType currentType() {
+        return TradeEngineType.from(appProperties.getTrading().getEngineType());
     }
 }

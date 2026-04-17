@@ -8,7 +8,7 @@
       <div style="display: grid; gap: 10px">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
           <button
-            class="btn"
+            class="btn btn-sm"
             :class="side === 'BUY' ? 'btn-buy' : 'btn-ghost'"
             @click="emit('update:side', 'BUY')"
             :disabled="disabled"
@@ -16,7 +16,7 @@
             买入
           </button>
           <button
-            class="btn"
+            class="btn btn-sm"
             :class="side === 'SELL' ? 'btn-sell' : 'btn-ghost'"
             @click="emit('update:side', 'SELL')"
             :disabled="disabled"
@@ -50,11 +50,11 @@
         </label>
 
         <div style="display: flex; gap: 8px; flex-wrap: wrap">
-          <button class="btn" @click="fillPct(0.25)" :disabled="disabled">25%</button>
-          <button class="btn" @click="fillPct(0.5)" :disabled="disabled">50%</button>
-          <button class="btn" @click="fillPct(0.75)" :disabled="disabled">75%</button>
-          <button class="btn" @click="fillPct(1)" :disabled="disabled">100%</button>
-          <button class="btn btn-ghost" @click="fillMax" :disabled="disabled">最大</button>
+          <button class="btn btn-sm" @click="fillPct(0.25)" :disabled="disabled">25%</button>
+          <button class="btn btn-sm" @click="fillPct(0.5)" :disabled="disabled">50%</button>
+          <button class="btn btn-sm" @click="fillPct(0.75)" :disabled="disabled">75%</button>
+          <button class="btn btn-sm" @click="fillPct(1)" :disabled="disabled">100%</button>
+          <button class="btn btn-ghost btn-sm" @click="fillMax" :disabled="disabled">最大</button>
         </div>
 
         <div class="badge" style="justify-content: space-between">
@@ -63,11 +63,11 @@
         </div>
 
         <button
-          class="btn"
+          class="btn btn-sm"
           :class="side === 'BUY' ? 'btn-buy' : 'btn-sell'"
           @click="emit('submit')"
           :disabled="disabled"
-          style="padding: 12px 12px; font-weight: 800"
+          style="padding: 11px 12px; font-weight: 700"
         >
           {{ disabled ? "下单中…" : side === "BUY" ? "买入" : "卖出" }}
         </button>
@@ -159,4 +159,3 @@ function fillMax() {
   fillPct(1);
 }
 </script>
-

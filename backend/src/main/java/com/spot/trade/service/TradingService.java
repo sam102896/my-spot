@@ -23,13 +23,13 @@ public class TradingService implements TradeOrderService, TradeEngineAware {
     private final TradingPairRepo pairRepo;
     private final OrderRepo orderRepo;
     private final OrderIntentRepo intentRepo;
-    private final TradeMatchingService matchingService;
-    private final TradePositionService positionService;
-    private final TradeRiskService riskService;
+    private final MatchingEngine matchingService;
+    private final DbTradePositionService positionService;
+    private final DbTradeRiskService riskService;
     private final OperationLogService logService;
 
     public TradingService(TradingPairRepo pairRepo, OrderRepo orderRepo, OrderIntentRepo intentRepo,
-            TradeMatchingService matchingService, TradePositionService positionService, TradeRiskService riskService,
+            MatchingEngine matchingService, DbTradePositionService positionService, DbTradeRiskService riskService,
             OperationLogService logService) {
         this.pairRepo = pairRepo;
         this.orderRepo = orderRepo;

@@ -5,7 +5,7 @@
       <div class="muted mono" style="font-size: 12px">{{ pair }}</div>
     </div>
     <div class="panel-body" style="padding: 0">
-      <div class="scroll" style="max-height: 320px">
+      <div class="scroll trades-body">
         <table class="table">
           <thead>
             <tr>
@@ -43,6 +43,7 @@ const props = defineProps<{
   trades: Trade[];
   priceDecimals?: number;
   qtyDecimals?: number;
+  maxBodyHeight?: string;
 }>();
 
 const flashKeys = ref(new Set<string>());
@@ -102,3 +103,9 @@ onBeforeUnmount(() => {
   if (timer) window.clearTimeout(timer);
 });
 </script>
+
+<style scoped>
+.trades-body {
+  height: v-bind("props.maxBodyHeight ?? '320px'");
+}
+</style>

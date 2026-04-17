@@ -20,6 +20,7 @@ let candleSeries: ISeriesApi<"Candlestick"> | null = null;
 let volSeries: ISeriesApi<"Histogram"> | null = null;
 let maSeries: Record<number, ISeriesApi<"Line">> = {};
 let ro: ResizeObserver | null = null;
+let disposed = false;
 
 function toCandleData(b: Bar) {
   const time = Math.floor(Date.parse(b.t) / 1000) as UTCTimestamp;
@@ -63,7 +64,7 @@ function calcMa(period: number, bars: Bar[]) {
 }
 
 function render() {
-  if (!el.value) return;
+  if (disposed || !el.value || !el.value.isConnected) return;
   if (!chart) {
     chart = createChart(el.value, {
       layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "rgba(229,231,235,0.9)" },
@@ -85,7 +86,10 @@ function render() {
     });
     volSeries = chart.addHistogramSeries({ priceScaleId: "" });
     chart.priceScale("").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
-    ro = new ResizeObserver(() => chart?.applyOptions({ width: el.value!.clientWidth, height: el.value!.clientHeight }));
+    ro = new ResizeObserver(() => {
+      if (disposed || !chart || !el.value || !el.value.isConnected) return;
+      chart.applyOptions({ width: el.value.clientWidth, height: el.value.clientHeight });
+    });
     ro.observe(el.value);
   }
   const candles = props.bars.map(toCandleData);
@@ -110,17 +114,24 @@ function render() {
 }
 
 onMounted(() => {
+  disposed = false;
   render();
 });
 
 onBeforeUnmount(() => {
+  disposed = true;
   ro?.disconnect();
   ro = null;
-  chart?.remove();
+  const current = chart;
   chart = null;
   candleSeries = null;
   volSeries = null;
   maSeries = {};
+  try {
+    current?.remove();
+  } catch {
+    // 路由切换时图表节点可能已被卸载，忽略底层库的销毁异常，避免打断导航。
+  }
 });
 
 watch(

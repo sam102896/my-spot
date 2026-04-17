@@ -14,8 +14,8 @@
     </div>
 
     <div class="panel-body" style="padding: 0">
-      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 0">
-        <div class="scroll" style="max-height: 320px">
+      <div class="grid orderbook-body" style="grid-template-columns: 1fr 1fr; gap: 0">
+        <div class="scroll" style="height: 100%">
           <table class="table">
             <thead>
               <tr>
@@ -43,7 +43,7 @@
           </table>
         </div>
 
-        <div class="scroll" style="max-height: 320px">
+        <div class="scroll" style="height: 100%">
           <table class="table">
             <thead>
               <tr>
@@ -90,6 +90,7 @@ const props = defineProps<{
   loading: boolean;
   priceDecimals?: number;
   qtyDecimals?: number;
+  maxBodyHeight?: string;
 }>();
 
 const emit = defineEmits<{
@@ -194,6 +195,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.orderbook-body {
+  height: v-bind("props.maxBodyHeight ?? '320px'");
+}
+
 .depth-bar {
   position: absolute;
   inset: 0;

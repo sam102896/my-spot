@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import * as echarts from "echarts";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { formatTimeHms, toNumber } from "../../utils/format";
+import { atomicToNumber, formatTimeHms } from "../../utils/format";
 
 type Bar = {
   t: string;
@@ -25,6 +25,13 @@ const el = ref<HTMLElement | null>(null);
 let chart: echarts.ECharts | null = null;
 let ro: ResizeObserver | null = null;
 
+function normalizeValue(v: unknown): number {
+  if (typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1_000_000) {
+    return v;
+  }
+  return atomicToNumber(v);
+}
+
 const parsed = computed(() => {
   const times: string[] = [];
   const candles: [number, number, number, number][] = [];
@@ -32,11 +39,11 @@ const parsed = computed(() => {
   const closes: number[] = [];
   for (const b of props.bars) {
     times.push(formatTimeHms(b.t));
-    const o = toNumber(b.o, 8);
-    const h = toNumber(b.h, 8);
-    const l = toNumber(b.l, 8);
-    const c = toNumber(b.c, 8);
-    const v = toNumber(b.v, 8);
+    const o = normalizeValue(b.o);
+    const h = normalizeValue(b.h);
+    const l = normalizeValue(b.l);
+    const c = normalizeValue(b.c);
+    const v = normalizeValue(b.v);
     candles.push([o, c, l, h]);
     vols.push(v);
     closes.push(c);
@@ -198,4 +205,3 @@ watch(
   { deep: true }
 );
 </script>
-

@@ -1,5 +1,5 @@
 <template>
-  <div style="display: grid; gap: 14px; grid-template-columns: 1fr 1fr">
+  <div class="auth-grid">
     <section class="panel">
       <div class="panel-header">
         <div class="panel-title">登录</div>
@@ -20,7 +20,7 @@
           </label>
 
           <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap">
-            <button class="btn btn-primary" @click="requestOtp" :disabled="loading">获取验证码</button>
+            <button class="btn btn-primary btn-sm" @click="requestOtp" :disabled="loading">获取验证码</button>
             <span v-if="otpEcho" class="badge">
               <span class="dot ok" />
               <span class="mono">DEV OTP：{{ otpEcho }}</span>
@@ -32,13 +32,13 @@
             <input v-model="login.otp" class="input" />
           </label>
 
-          <button class="btn" style="font-weight: 800; padding: 12px 12px" @click="doLogin" :disabled="loading">
+          <button class="btn btn-primary btn-sm" style="font-weight: 700; padding: 11px 12px" @click="doLogin" :disabled="loading">
             {{ loading ? "登录中…" : "登录" }}
           </button>
 
           <div class="muted" style="font-size: 12px">
-            测试账号：<span class="mono">alice@example.com</span> / <span class="mono">Passw0rd!</span>（已 KYC，资金密码
-            <span class="mono">123456</span>）
+            测试账号：<span class="mono">alice@example.com</span> / <span class="mono">Passw0rd!</span>，资金密码
+            <span class="mono">123456</span>
           </div>
         </div>
       </div>
@@ -58,7 +58,7 @@
             <div class="muted">密码（至少 8 位）</div>
             <input v-model="reg.password" class="input" type="password" />
           </label>
-          <button class="btn btn-primary" @click="doRegister" :disabled="loading">{{ loading ? "提交中…" : "注册" }}</button>
+          <button class="btn btn-primary btn-sm" @click="doRegister" :disabled="loading">{{ loading ? "提交中…" : "注册" }}</button>
           <div v-if="regRes" class="badge" style="border-color: rgba(22, 163, 74, 0.28)">
             <span class="dot ok" />
             <span class="mono">注册成功：{{ regRes }}</span>

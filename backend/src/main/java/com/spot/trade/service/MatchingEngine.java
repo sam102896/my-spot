@@ -28,11 +28,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class MatchingEngine implements TradeMatchingService, TradeEngineAware {
     private final OrderRepo orderRepo;
     private final TradeRepo tradeRepo;
-    private final TradePositionService positionService;
+    private final DbTradePositionService positionService;
     private final MarketHub marketHub;
     private final ConcurrentHashMap<UUID, ReentrantLock> pairLocks = new ConcurrentHashMap<>();
 
-    public MatchingEngine(OrderRepo orderRepo, TradeRepo tradeRepo, TradePositionService positionService,
+    public MatchingEngine(OrderRepo orderRepo, TradeRepo tradeRepo, DbTradePositionService positionService,
             MarketHub marketHub) {
         this.orderRepo = orderRepo;
         this.tradeRepo = tradeRepo;
