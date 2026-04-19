@@ -5,6 +5,9 @@ import jakarta.servlet.http.HttpServletRequest;
 public final class RequestContext {
     public static final String HEADER_DEVICE_ID = "X-Device-Id";
 
+    public record ClientMeta(String ip, String deviceId) {
+    }
+
     private RequestContext() {
     }
 
@@ -22,5 +25,9 @@ public final class RequestContext {
             return "unknown";
         }
         return d.trim();
+    }
+
+    public static ClientMeta capture(HttpServletRequest req) {
+        return new ClientMeta(ip(req), deviceId(req));
     }
 }

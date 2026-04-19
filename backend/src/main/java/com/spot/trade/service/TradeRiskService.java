@@ -9,5 +9,9 @@ public interface TradeRiskService {
 
     record ValidatedPlaceOrder(UserEntity user, TradingPairEntity pair, Long priceAtomic, long qtyAtomic,
             OrderIntentEntity intent) {
+        public static ValidatedPlaceOrder of(UserEntity user, TradingPairEntity pair, Long priceAtomic, long qtyAtomic,
+                OrderIntentEntity intent) {
+            return new ValidatedPlaceOrder(user, pair, priceAtomic, qtyAtomic, intent);
+        }
     }
 }

@@ -4,12 +4,12 @@ import com.spot.account.model.LedgerType;
 import com.spot.account.service.WalletService;
 import com.spot.common.api.ApiException;
 import com.spot.common.money.Atomic;
+import com.spot.trade.domain.repository.TradeOrderRepository;
 import com.spot.trade.entity.OrderEntity;
 import com.spot.trade.entity.TradingPairEntity;
 import com.spot.trade.model.OrderSide;
 import com.spot.trade.model.OrderStatus;
 import com.spot.trade.model.OrderType;
-import com.spot.trade.repo.OrderRepo;
 import java.math.BigInteger;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -19,9 +19,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class DbTradePositionService implements TradePositionService, TradeEngineAware {
     private final WalletService walletService;
-    private final OrderRepo orderRepo;
+    private final TradeOrderRepository orderRepo;
 
-    public DbTradePositionService(WalletService walletService, OrderRepo orderRepo) {
+    public DbTradePositionService(WalletService walletService, TradeOrderRepository orderRepo) {
         this.walletService = walletService;
         this.orderRepo = orderRepo;
     }

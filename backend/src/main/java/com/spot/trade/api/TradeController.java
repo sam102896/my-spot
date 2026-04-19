@@ -32,9 +32,7 @@ public class TradeController {
     public PlaceOrderRes place(@RequestBody PlaceOrderReq req, @RequestHeader("X-Idempotency-Key") String idemKey,
             HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
-        OrderEntity o = tradingService.placeOrder(new TradeOrderService.PlaceOrderCommand(userId, req.pair,
-                OrderSide.valueOf(req.side), OrderType.valueOf(req.type), req.price, req.qty, req.clientOrderId,
-                idemKey, RequestContext.ip(http), RequestContext.deviceId(http)));
+        OrderEntity o = tradingService.placeOrder(req.toCommand(userId, idemKey, RequestContext.capture(http)));
         return new PlaceOrderRes(o.getId().toString(), o.getStatus().name(), o.getFilledQty(), o.getOrigQty(),
                 o.getReservedQuote());
     }
@@ -42,8 +40,8 @@ public class TradeController {
     @PostMapping("/order/{id}/cancel")
     public CancelOrderRes cancel(@PathVariable("id") String id, HttpServletRequest http) {
         UUID userId = UUID.fromString(Auth.requireUserId());
-        OrderEntity o = tradingService.cancelOrder(new TradeOrderService.CancelOrderCommand(userId, UUID.fromString(id),
-                RequestContext.ip(http), RequestContext.deviceId(http)));
+        OrderEntity o = tradingService
+                .cancelOrder(TradeOrderService.CancelOrderCommand.of(userId, UUID.fromString(id), RequestContext.capture(http)));
         return new CancelOrderRes(o.getId().toString(), o.getStatus().name());
     }
 
@@ -61,6 +59,12 @@ public class TradeController {
 
     public record PlaceOrderReq(@NotBlank String pair, @NotBlank String side, @NotBlank String type, String price,
             @NotBlank String qty, String clientOrderId) {
+        public TradeOrderService.PlaceOrderCommand toCommand(UUID userId, String idemKey, RequestContext.ClientMeta client) {
+            return TradeOrderService.PlaceOrderCommand.of(userId,
+                    TradeOrderService.PlaceOrderDetails.of(pair, OrderSide.valueOf(side), OrderType.valueOf(type), price,
+                            qty, clientOrderId),
+                    idemKey, client);
+        }
     }
 
     public record PlaceOrderRes(String id, String status, long filledQty, long origQty, long reservedQuote) {

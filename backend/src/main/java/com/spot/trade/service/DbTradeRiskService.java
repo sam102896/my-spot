@@ -5,12 +5,12 @@ import com.spot.account.model.KycStatus;
 import com.spot.common.api.ApiException;
 import com.spot.common.crypto.Hashing;
 import com.spot.common.money.Atomic;
+import com.spot.trade.domain.repository.TradeOrderIntentRepository;
+import com.spot.trade.domain.repository.TradeOrderRepository;
+import com.spot.trade.domain.repository.TradePairRepository;
 import com.spot.trade.entity.OrderIntentEntity;
 import com.spot.trade.entity.TradingPairEntity;
 import com.spot.trade.model.OrderType;
-import com.spot.trade.repo.OrderIntentRepo;
-import com.spot.trade.repo.OrderRepo;
-import com.spot.trade.repo.TradingPairRepo;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,12 +18,12 @@ import org.springframework.stereotype.Service;
 @Service
 public class DbTradeRiskService implements TradeRiskService, TradeEngineAware {
     private final com.spot.account.repo.UserRepo userRepo;
-    private final TradingPairRepo pairRepo;
-    private final OrderIntentRepo intentRepo;
-    private final OrderRepo orderRepo;
+    private final TradePairRepository pairRepo;
+    private final TradeOrderIntentRepository intentRepo;
+    private final TradeOrderRepository orderRepo;
 
-    public DbTradeRiskService(com.spot.account.repo.UserRepo userRepo, TradingPairRepo pairRepo,
-            OrderIntentRepo intentRepo, OrderRepo orderRepo) {
+    public DbTradeRiskService(com.spot.account.repo.UserRepo userRepo, TradePairRepository pairRepo,
+            TradeOrderIntentRepository intentRepo, TradeOrderRepository orderRepo) {
         this.userRepo = userRepo;
         this.pairRepo = pairRepo;
         this.intentRepo = intentRepo;
@@ -91,6 +91,6 @@ public class DbTradeRiskService implements TradeRiskService, TradeEngineAware {
             intent.setCreatedAt(Instant.now());
             intent = intentRepo.save(intent);
         }
-        return new ValidatedPlaceOrder(user, pair, priceAtomic, qtyAtomic, intent);
+        return ValidatedPlaceOrder.of(user, pair, priceAtomic, qtyAtomic, intent);
     }
 }
