@@ -13,6 +13,37 @@ app:
   trading:
     defaultFeeBps: 10
     klineIntervalSeconds: 60
+    engineType: "db"
+    consensusType: "local"
+    kafka:
+      enabled: false
+      commandTopic: "trade.command"
+      resultTopic: "trade.result"
+      commandGroupId: "spot-trade-command"
+      replyGroupId: "spot-trade-reply-${random.uuid}"
+      replyTimeoutMs: 5000
+    aeron:
+      enabled: false
+      embeddedDriver: true
+      directoryName: ""
+      commandChannel: "aeron:ipc"
+      resultChannel: "aeron:ipc"
+      commandStreamId: 1001
+      resultStreamId: 1002
+      fragmentLimit: 10
+      offerRetryCount: 200
+      idleSleepMs: 1
+      replyTimeoutMs: 3000
+    marketMaker:
+      enabled: true
+      useBinancePrice: true
+      levels: 10
+      spreadBps: 6
+      refreshMs: 1200
+      tradePulseMs: 1500
+      binanceWatchdogMs: 15000
+      minQty: "0.001"
+      maxQty: "0.08"
 
 spring:
   datasource:
@@ -32,6 +63,21 @@ spring:
     console:
       enabled: true
       path: /h2
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "*"
+    listener:
+      missing-topics-fatal: false
+    admin:
+      fail-fast: false
 
 logging:
   level:
